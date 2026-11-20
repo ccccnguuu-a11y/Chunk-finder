@@ -15,20 +15,38 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Find and extract source ZIP
+        shell: bash
         run: |
-          mkdir extracted
-          ZIP=$(find . -maxdepth 1 -name "*.zip" | head -n 1)
+          mkdir -p extracted
+
+          ZIP="$(find . -maxdepth 1 -type f -iname '*.zip' -print -quit)"
+
           if [ -z "$ZIP" ]; then
             echo "Source ZIP not found"
             exit 1
           fi
+
+          echo "Found ZIP: $ZIP"
           unzip -q "$ZIP" -d extracted
-          PROJECT=$(find extracted -name build.gradle -print -quit)
-          if [ -z "$PROJECT" ]; then
+
+          PROJECT_FILE="$(find extracted -type f -name build.gradle -print -quit)"
+
+          if [ -z "$PROJECT_FILE" ]; then
             echo "build.gradle not found"
             exit 1
           fi
-          echo "PROJECT_DIR=$(dirname "$PROJECT")" >> "$GITHUB_ENV"
+
+          PROJECT_DIR="$(dirname "$PROJECT_FILE")"
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
+      - name: Fix Fabric Loom plugin
+        shell: bash
+        run: |
+          sed -i "s/id 'fabric-loom'/id 'net.fabricmc.fabric-loom-remap'/" "$PROJECT_DIR/build.gradle"
+          sed -i 's/id "fabric-loom"/id "net.fabricmc.fabric-loom-remap"/' "$PROJECT_DIR/build.gradle"
+
+          echo "Updated Loom plugin:"
+          head -n 8 "$PROJECT_DIR/build.gradle"
 
       - name: Set up Java 21
         uses: actions/setup-java@v4
@@ -39,7 +57,7 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.14.3'
+          gradle-version: '9.2.1'
 
       - name: Build mod
         run: gradle -p "$PROJECT_DIR" build --no-daemon
@@ -49,4 +67,5 @@ jobs:
         with:
           name: ChunkFinder-1.21.11-JAR
           path: extracted/**/build/libs/*.jar
+          if-no-files-found: error
           
