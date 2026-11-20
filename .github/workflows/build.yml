@@ -1,0 +1,52 @@
+
+name: Build ChunkFinder JAR
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Find and extract source ZIP
+        run: |
+          mkdir extracted
+          ZIP=$(find . -maxdepth 1 -name "*.zip" | head -n 1)
+          if [ -z "$ZIP" ]; then
+            echo "Source ZIP not found"
+            exit 1
+          fi
+          unzip -q "$ZIP" -d extracted
+          PROJECT=$(find extracted -name build.gradle -print -quit)
+          if [ -z "$PROJECT" ]; then
+            echo "build.gradle not found"
+            exit 1
+          fi
+          echo "PROJECT_DIR=$(dirname "$PROJECT")" >> "$GITHUB_ENV"
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14.3'
+
+      - name: Build mod
+        run: gradle -p "$PROJECT_DIR" build --no-daemon
+
+      - name: Upload JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChunkFinder-1.21.11-JAR
+          path: extracted/**/build/libs/*.jar
+          
