@@ -39,12 +39,13 @@ jobs:
           PROJECT_DIR="$(dirname "$PROJECT_FILE")"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
+      
       - name: Fix Fabric Loom plugin
         shell: bash
         run: |
-          sed -i "s/id 'fabric-loom'/id 'net.fabricmc.fabric-loom-remap'/" "$PROJECT_DIR/build.gradle"
-          sed -i 's/id "fabric-loom"/id "net.fabricmc.fabric-loom-remap"/' "$PROJECT_DIR/build.gradle"
-
+          sed -i -E "/fabric-loom/s/(version[[:space:]]+['\"])[^'\"]+(['\"])/\11.14\2/" "$PROJECT_DIR/build.gradle"
+          grep -n "fabric-loom" "$PROJECT_DIR/build.gradle"
+          
           echo "Updated Loom plugin:"
           head -n 8 "$PROJECT_DIR/build.gradle"
 
